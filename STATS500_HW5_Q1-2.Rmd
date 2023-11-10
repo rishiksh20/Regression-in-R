@@ -1,0 +1,104 @@
+---
+title: "STATS 500 HW-5 Q-1 and Q-2"
+author: "Rishikesh Ksheersagar"
+date: "11 Oct 2023"
+output: 
+  html_notebook:
+    fig_width : 2
+    fig_height : 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(faraway)
+data("teengamb")
+lmodel <- lm(gamble ~ ., data=teengamb)
+sumary(lmodel)
+```
+
+#### Check for influential points
+
+```{r}
+cook <- cooks.distance(lmodel)
+halfnorm(cook, nlab=3, ylab="Cook's Distance")
+```
+
+```{r}
+influential_pts <- which(cook > 1)
+print(influential_pts)
+```
+
+###### There is no highly influential point by the threshold of 1, but there is just one point at index 24, which is moderately influential with cook’s distance>0.5
+
+#### Check the structure of the relationship between the predictors and the response
+
+```{r}
+op<-par(mfrow=c(2,2))
+plot(teengamb$sex, lmodel$residuals+coef(lmodel)['sex']*teengamb$sex, xlab="Sex", ylab="Gamble (adjusted for Sex")
+abline(a=0,b=coef(lmodel)['sex'])
+plot(teengamb$status, lmodel$residuals+coef(lmodel)['status']*teengamb$status, xlab="Status", ylab="Gamble (adjusted for Status")
+abline(a=0,b=coef(lmodel)['status'])
+plot(teengamb$verbal, lmodel$residuals+coef(lmodel)['verbal']*teengamb$status, xlab="Verbal", ylab="Gamble (adjusted for Verbal")
+abline(a=0,b=coef(lmodel)['verbal'])
+plot(teengamb$status, lmodel$residuals+coef(lmodel)['income']*teengamb$status, xlab="Income", ylab="Gamble (adjusted for Income")
+abline(a=0,b=coef(lmodel)['income'])
+par(op)
+```
+
+# Q2
+
+```{r}
+data("longley")
+lmodel2 = lm(Employed ~ ., longley) 
+summary(lmodel2)
+```
+
+
+```{r}
+longley_norm <- as.data.frame(scale(longley))
+lmodel2_norm <- lm(Employed ~ ., longley_norm)
+summary(lmodel2_norm)
+```
+
+###### The coefficients of the normalized model are in terms of the standard deviations, and not in the original units of the variables. This makes them more comparable to each other. The standard errors have also changed because of the change in scale. However, the structure of the model (which variables are significant, the signs of the coefficients, etc.) remains the same, and even the R-squared and adjusted R-squared values, since they are scale invariant.
+
+#### Condition Numbers
+
+```{r}
+X <- model.matrix(lmodel2)[, -1]
+e <- eigen(t(X) %*% X)
+data.frame(ev = t(e$val))
+data.frame(Rcond = t(round(sqrt(e$val[1]/e$val))))
+```
+
+###### We see a high condition number, and note that $sqrt(\lambda_1/\lambda_i)$ > 30 for i = 4,5 as well where λi denotes the sorted eigenvalues.
+
+#### Correlations between predictors
+
+```{r}
+pred <- longley[, !(names(longley) %in% "Employed")]
+corr <- cor(pred)
+print(corr)
+```
+
+###### GNP.deflator and GNP: These variables exhibit a robust positive correlation, as indicated by a high correlation coefficient of 0.9915892. This implies that regions with a higher Gross National Product (GNP) tend to also have a higher GNP deflator.
+
+###### Unemployed and Armed.Forces: In contrast, the correlation coefficient between these variables is -0.1774206, suggesting a weak negative correlation. This implies that regions with higher unemployment rates tend to possess smaller armed forces, although the relationship is not very strong.
+
+###### Population and Year: These variables are strongly positively correlated, with a correlation coefficient of 0.9939528. This implies that the population has been consistently growing over the years.
+
+###### The notable correlations between GNP.deflator and GNP, GNP.deflator and Population, GNP and Year, and Population and Year may signal potential multicollinearity when using these variables as predictors in a linear regression model. Multicollinearity can impact the interpretability of regression coefficients and the model's stability.
+
+###### It's important to note that while correlation doesn't establish causation, these relationships can serve as a valuable starting point for further investigation into potential causal connections.
+
+#### Variance Inflation Factors
+
+```{r}
+print(vif(lmodel2))
+```
+
+###### The model exhibits notably elevated Variance Inflation Factor (VIF) values across several variables (including GNP.deflator, GNP, Unemployed, Population, and Year), signifying a substantial presence of multicollinearity. This suggests a strong interconnection between these variables, potentially leading to unreliable and challenging-to-interpret coefficient estimates.
+

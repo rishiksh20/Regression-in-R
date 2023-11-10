@@ -1,0 +1,166 @@
+---
+title: "STATS 500 HW-1 Q-1"
+author: "Rishikesh Ksheersagar"
+date: "11 Sept 2023"
+output: 
+  html_notebook:
+    fig_width : 2
+    fig_height : 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(faraway)
+library(reshape2)
+library(ggplot2)
+library(palmerpenguins)
+```
+
+###### Q. The dataset teengamb concerns a study of teenage gambling in Britain. Make a numerical and graphical summary of the data, commenting on any features that you find interesting.
+
+###### Let's get a first glance at the data
+
+```{r paged.print=FALSE}
+data("teengamb")
+head(teengamb)
+cat('Number of Rows (Observations) in Teengamb Data: ', nrow(teengamb), '\nNumber of Columns in Teengamb Data: ', ncol(teengamb))
+```
+
+
+
+###### The Teenganb data from the faraway library concerns a study of teenage gambling in Britain.
+
+###### The dataset contains 47 Observations and 5 columns namely Sex, Status, Income, Verbal and Gamble.
+
+###### 1. sex: 0=male,1=female
+###### 2. status: socioeconomic status score based on parents’ occupation 
+###### 3. income: in pounds per week
+###### 4. verbal: verbal score in words out of 12 correctly defined
+###### 5. gamble: expenditure on gambling in pounds per year
+
+
+
+###### Lets do some Univariate analysis to understand the data present in each column in the dataset
+
+
+
+###### Checking the number of Male and Female teenagers
+
+
+
+
+###### Changing the 0s and 1s to Males and Females in the Sex column
+
+```{r}
+teengamb$sex <- factor(teengamb$sex)
+levels(teengamb$sex) <- c("male", "female") 
+summary(teengamb)
+```
+
+
+###### Bar chart for looking at distribution of Males and Females in the sample considered
+
+```{r fig.height=2.75, fig.width=9}
+op <- par(mfrow=c(1, 2))
+barplot(summary(factor(teengamb$sex)), xlab = "Sex", main = "Distribution of Males and Females in the Study", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6, cex.names = 0.6)
+par(op)
+```
+
+
+
+###### We can clearly see that the we have more males (28) than females (19) in the sample considered for the study.
+
+
+
+
+###### Lets look at the distribution of Status column -
+```{r fig.height=2.75, fig.width=9}
+op <- par(mfrow=c(1, 2))
+plot(density(teengamb$status, na.rm = True), main = "Distribution of the Status Column", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6)
+boxplot(teengamb$status, xlab = 'Gamble', main = "Distribution of the Status Column", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6, cex.names = 0.6)
+par(op)
+```
+###### The distribution of Status looks normal with no major concerns.
+
+###### Looking at the distributions of Income column - 
+```{r fig.height=2.75, fig.width=9}
+op <- par(mfrow=c(1, 2))
+plot(density(teengamb$income, na.rm = True), main = "Distribution of the Income Column", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6)
+boxplot(teengamb$income, xlab = 'Income', main = "Distribution of the Income Column", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6, cex.names = 0.6)
+par(op)
+```
+###### The distribution of Incomes is Right Skewed and has exactly one outlier.
+
+###### Looking at the Verbal column in the data -
+```{r fig.height=2.75, fig.width=9}
+op <- par(mfrow=c(1, 2))
+plot(density(teengamb$verbal, na.rm = True), main = "Distribution of the Verbal Column", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6)
+boxplot(teengamb$verbal, xlab = 'Verbal', main = "Distribution of the Verbal Column", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6, cex.names = 0.6)
+par(op)
+```
+
+###### The data for Verbal is Left skewed with a few people having lower Verbal Scores than the most.
+
+
+###### Looking at the distribution of Gamble amount
+```{r fig.height=2.75, fig.width=9}
+op <- par(mfrow=c(1, 2))
+boxplot(teengamb$gamble, xlab = 'Gamble', main = "Distribution of the Gamble Amount", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6, cex.names = 0.6)
+plot(density(teengamb$gamble, na.rm = True), main = "Distribution of the Gamble Amount", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6, cex.names = 0.6)
+par(op)
+```
+
+
+###### The distribution of Gamble amount is heavily right skewed. This shows that most people in the sample spend lower amounts in Gambling but there exist a small set of people who spend a lot more than the average gambling amount.
+
+
+###### Clearly there are a few outliers in the Gamble Amount.
+
+
+###### Let's look at the distribution of Gambling Amount with respect to Sex.
+```{r fig.height=4, fig.width=9}
+boxplot(gamble ~ sex, teengamb, main = "Distribution of the Gamble Amount wrt Sex", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6, cex.names = 0.6)
+cat("Summary of Gambling Money spent by Males:\n", summary(teengamb$gamble[teengamb$sex=="male"]))
+cat("Summary of Gambling Money spent by Females\n", summary(teengamb$gamble[teengamb$sex=="female"]))
+```
+
+###### It seems that the males present in the sample tend to spend more money on Gambling than the Female sample considered for the study. But this could also be a result of having more males in the population. 
+
+###### The outlier case where a person spent over $150 in Gambling is a Male.
+
+###### Looking at the median gambling amount spent by Males and Females clearly shows that the Males in the sample are spending more money on average than the Females considered for the Study.
+
+###### Lets look at the correlation between Status, Income and Verbal against Gamble Amount
+```{r fig.height=2.75, fig.width=9}
+op <- par(mfrow=c(1, 3))
+plot(gamble ~ status, teengamb, main = "Correlation between Gamble Amount and Status", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6)
+abline(lm(gamble ~ status, teengamb))
+plot(gamble ~ income, teengamb, main = "Correlation between Gamble Amount and Income", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6)
+abline(lm(gamble ~ income, teengamb))
+plot(gamble ~ verbal, teengamb, main = "Correlation between Gamble Amount and Verbal", cex.lab=0.6, cex.axis=0.6, cex.main=0.8, cex.sub=0.6)
+abline(lm(gamble ~ verbal, teengamb))
+par(op)
+```
+###### There isn't a strong correlation between Status and Gambling Amount which makes sense as the Status is uniformly distributed whereas the Gambling Amount is heavily Right Skewed.
+
+###### There is clearly a positive correlation between the Income and Gambling Amount.
+
+###### Note: The outlier case in Gambling Amount where a male spent over $150 did not even have the highest Income in the sample.
+
+###### Looking at the scatter plot, it seems there is a mild negative correlation between Verbal score of people and the Gambling Amount spent.
+
+###### Finally to get a good picture, lets have a look at the correlation heatmap for the entire dataset - 
+```{r fig.height=2, fig.width=4}
+corr_mat <- round(cor(teengamb[sapply(teengamb, is.numeric)]),2)
+melted_corr_mat <- melt(corr_mat)
+ 
+library(ggplot2)
+ggplot(data = melted_corr_mat, aes(x=Var1, y=Var2, fill=value)) +
+geom_tile() + scale_fill_viridis_b()
+```
+
+

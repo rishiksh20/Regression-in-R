@@ -1,0 +1,196 @@
+---
+title: "STATS 500 HW-7"
+author: "Rishikesh Ksheersagar"
+date: "6 Nov 2023"
+output: 
+  html_notebook:
+    fig_width : 2
+    fig_height : 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Q1
+
+```{r}
+library(faraway)
+data("teengamb")
+```
+
+##### Backward Elimination
+```{r}
+lmod <- lm(gamble ~ ., data = teengamb)
+summary(lmod)
+```
+
+```{r}
+lmod <- update(lmod, .~. - status)
+summary(lmod)
+```
+
+```{r}
+lmod <- update(lmod, .~. - verbal)
+summary(lmod)
+```
+
+In Backward Elimination we eliminate "Status" in the first iteration as it has the highest p-value greater than the critical p-value. 
+Next, we can eliminate "Verbal" as it has the largest p-value greater than critical p-value in the 2nd iteration but this also increases the Standard Error (from 22.43 in first iteration to 22.75 in 2nd iteration) of our model.
+
+##### If the purpose of modeling is prediction, we must only eliminate "Status" as the model by eliminating "Status" has the least Std. Error, but if the purpose of our model is interpretation, we must eliminate "Status" and "Verbal" as it gives out a model with all statistically significant predictors.
+
+##### AIC
+
+```{r}
+aic_mod <- lm(gamble ~ ., data = teengamb)
+step(aic_mod)
+```
+
+
+```{r}
+library(leaps)
+mod <- regsubsets(gamble ~ .,data=teengamb)
+summary(mod)
+AIC <- 47 * log(summary(mod)$rss/47) + (2:5) * 2
+plot(AIC ~ I(1:4), ylab = "AIC", xlab = "Number of Predictors", main = "AIC Minimization")
+```
+
+
+As we can see, AIC is minimum at # predictors = 3.
+
+##### AIC eliminates Status and returns final model with Sex, Income and Verbal, thus eliminates "Status".
+##### The step() function is a cheaper alternative for the original process of getting AIC. The function does not evaluate the AIC for all possible models but uses a search method that com- pares models sequentially. Thus it bears some comparison to the stepwise method described above, but only in the method of search — there is no hypothesis testing.
+
+
+##### Mallow's Cp
+
+```{r}
+rs<-summary(mod)
+plot(1:4, rs$cp, xlab="No. of Parameters",ylab="Cp Statistic")
+abline (0, 1)
+```
+
+##### Mallow's Cp picks the best model with 3 parameters (lowest Cp Statistic). It eliminates Status variable.
+
+##### Adjusted R-squared
+
+```{r}
+plot (1:4, rs$adjr2, xlab="No. of Parameters",ylab="Adjusted R-squqre")
+```
+
+##### Adj R^2 picks the best model with 3 parameters (highest Adjusted R-squared). It also eliminates Status variable.
+
+
+
+### Q2
+#### (a)
+```{r}
+data("seatpos")
+lmod_seat = lm(hipcenter ~ . , data = seatpos)
+summary(lmod_seat)
+```
+
+##### Firstly, a very significant p-value and insignificant Pr(>|t|) for the predictors indicates collinearity in the predictors.
+##### The Beta estimate for Leg Length is -6.43905 which indicates a negative corelation between the hipcenter and leg variables. If the leg length increases by 1 unit, keeping the other variables constant, the hipcenter will decrease by 6.43905 units.
+##### But this estimate is not very trustworthy due to the predictors being collinear.
+
+
+#### (b)
+
+```{r}
+predictors <- seatpos[c(1:8)]
+predictors.means <- colMeans(predictors)
+predictors.means <- data.frame(t(as.matrix(predictors.means, ncol = ncol(predictors.means))))
+prediction.means.predictors <- predict(lmod_seat , newdata = predictors.means, interval = "prediction")
+prediction.means.predictors
+```
+
+
+#### (c)
+
+##### Backward Elimination
+
+```{r}
+lmod_seat <- update(lmod_seat, . ~ .-Ht)
+summary(lmod_seat)
+```
+
+```{r}
+lmod_seat <- update(lmod_seat, . ~ .-Weight)
+summary(lmod_seat)
+```
+
+```{r}
+lmod_seat <- update(lmod_seat, . ~ .-Seated)
+summary(lmod_seat)
+```
+
+
+```{r}
+lmod_seat <- update(lmod_seat, . ~ .-Arm)
+summary(lmod_seat)
+```
+
+
+```{r}
+lmod_seat <- update(lmod_seat, . ~ .-Thigh)
+summary(lmod_seat)
+```
+
+```{r}
+lmod_seat <- update(lmod_seat, . ~ .-Age)
+summary(lmod_seat)
+```
+
+```{r}
+lmod_seat <- update(lmod_seat, . ~ .-Leg)
+summary(lmod_seat)
+```
+##### If the purpose of variable selection is interpretation, we should eliminate all predictors except "HtShoes" as this model only uses statistically significant predictors.
+##### Although, for the best model for prediction, we must eliminate "Ht", "Weight", "Seated", "Arm", "Thigh" in that order and keep "Age", "Leg" and "HtShoes" as it gives out the model with the least Standard Error, thus, it is the best for prediction. 
+
+
+##### AIC
+
+
+```{r}
+mod2 <- regsubsets(hipcenter ~ .,data=seatpos)
+summary(mod2)
+AIC <- 38 * log(summary(mod2)$rss/38) + (2:9) * 2
+plot(AIC ~ I(1:8), ylab = "AIC", xlab = "Number of Predictors", main = "AIC Minimization")
+```
+Used the original AIC procedure over the step() function here as the function does not evaluate the AIC for all possible models but uses a search method that com- pares models sequentially. Thus it bears some comparison to the step-wise method.
+
+##### Mallow's Cp
+
+```{r}
+rs2<-summary(mod2)
+plot(1:8, rs2$cp, xlab="No. of Parameters",ylab="Cp Statistic")
+abline (0, 1)
+```
+
+##### Both AIC and Mallow's Cp indicate that best model must have 3 predictors - Age, Ht, Leg.
+
+
+#### (d)
+
+```{r}
+AIC_mod_3 <- lm(hipcenter ~ Age + Ht + Leg, data = seatpos)
+summary(AIC_mod_3)
+```
+
+##### In the model with only 3 predictors, the predictors have more significance as compared to the model with all the predictors, but are still insignificant at the 0.05 level. 
+##### The Beta estimate for Leg Length is -6.7390 which is slightly less than that in the model with all predictors (-6.43905). This indicates that there is slightly stronger negative correlation between hipcenter and leg length than what can be seen in the model with all predictors. In the model with only 3 predictors, a unit increase in Leg Length would result in a decrease of 6.739 units in the hipcenter.
+
+```{r}
+predictors <- seatpos[c("Age", "Ht", "Leg")]
+predictors.means <- colMeans(predictors)
+predictors.means <- data.frame(t(as.matrix(predictors.means, ncol = ncol(predictors.means))))
+prediction.means.predictors <- predict(AIC_mod_3 , newdata = predictors.means, interval = "prediction")
+prediction.means.predictors
+```
+
+##### The upper and lower bounds are tighter as compared to the model with all predictors indicating that we can be more confident in using the model with 3 predictors for prediction.
+

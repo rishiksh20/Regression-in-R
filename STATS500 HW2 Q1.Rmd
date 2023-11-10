@@ -1,0 +1,77 @@
+---
+title: "STATS 500 HW-2 Q-1"
+author: "Rishikesh Ksheersagar"
+date: "19 Sept 2023"
+output: 
+  html_notebook:
+    fig_width : 2
+    fig_height : 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(faraway)
+data(teengamb)
+teengamb$sex <- factor(teengamb$sex)
+```
+
+```{r}
+lm_gamb <- lm(gamble ~ sex+status+income+verbal)
+summary(lm_gamb)
+sumary(lm_gamb)
+```
+
+##### Question 1. What percentage of variation in the response is explained by these predictors?
+###### Answer: R^2 = 0.5267
+
+```{r}
+lm_gamb$residuals; max(lm_gamb$residuals); min(lm_gamb$residuals)
+```
+##### Question 2. 
+##### (a) Which observation has the largest (positive) residual? Give the case number.
+######        Answer: 24th observation
+##### (b) Which observation has the lasrgest negative (magnitude) residual?
+######        Answer: 39th observation
+
+
+##### Question 3. Mean and Median of Residuals
+
+```{r}
+cat('Mean of Residuals = ',mean(lm_gamb$residuals), '\nMedian of Residuals = ', median(lm_gamb$residuals))
+```
+##### The Mean of Residuals is almost 0 whereas the Median is a negative number of a larger magnitude.
+###### For Linear regression, we assume that the distribution of Residuals is Normal with Mean = Median = 0
+###### In this case, Mean is 0 as expected but Median < Mean
+###### This signifies that the distribution of Residuals is right skewed with most cases having negative residuals. Although there are some cases where the Residuals are very large and of positive magnitude.
+###### This also implies that we are over-predicting values than actuals in most cases but in cases where we are under-predicting the values, the magnitude of deviation is higher comparatively.
+
+
+
+
+##### Question 4. Correlation between Residuals and Fitted Values
+```{r}
+fitted_value <- gamble - lm_gamb$residuals
+plot(fitted_value, lm_gamb$residuals)
+cat('Correlation of Residuals with Fitted Values = ', cor(lm_gamb$residuals, fitted_value))
+```
+###### The correlation of Residuals with the Fitted Values is almost 0.
+
+
+
+##### Question 5. Correlation of Residuals with Income, Status and Verbal
+```{r}
+cat('Correlation b/w Residuals and Income = ', cor(lm_gamb$residuals, income), '\nCorrelation b/w Residuals and Status = ', cor(lm_gamb$residuals, status), '\nCorrelation b/w Residuals and Verbal = ', cor(lm_gamb$residuals, verbal))
+
+```
+###### The correlation of Residuals with all other explaining factors is almost 0. This is aligned with the discussion in the class where we talked about errors/Residuals being Independent and identically normally distributed. This implies that there should be no correlation between the errors and explaining factors, which is aligned with what we are seeing in case of teengamb dataset's independent features (explaining factors).
+
+
+##### Question 6. 
+
+###### Sex=1 : female
+###### Sex=0 : male
+###### coefficient of sex: -22.1183301
+###### So, on average, teenage females spent $22.1183301 less on gambling than teenage males.

@@ -1,0 +1,193 @@
+---
+title: "HW6"
+author: "Divyam Sharma"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(dev = 'pdf')
+knitr::opts_chunk$set(cache=TRUE)
+knitr::opts_chunk$set(tidy=TRUE)
+knitr::opts_chunk$set(prompt=FALSE)
+knitr::opts_chunk$set(fig.height=5)
+knitr::opts_chunk$set(fig.width=7)
+knitr::opts_chunk$set(warning=FALSE)
+knitr::opts_chunk$set(message=FALSE)
+knitr::opts_knit$set(root.dir = ".")
+#library(latex2exp)   
+#library(pander)
+library(ggplot2)
+library(ggplot2)
+#library(GGally)
+#library(broom)
+#library(printr)
+library(faraway)
+library(MASS)
+```
+
+## Q.1. Comparing model fitting methods with the stackloss data 
+
+(a) Using the stackloss data, fit a model with stack.loss as the response and the other three variables as predictors using the following methods: 
+
+### (i) Least squares
+
+```{r}
+data(stackloss, package="faraway")
+lm.fit <- lm(stack.loss ~ . , data=stackloss)
+summary(lm.fit)
+plot(fitted(lm.fit),residuals(lm.fit),xlab="Fitted",ylab="Residuals")
+abline(h=0)
+```
+### (ii) Least absolute deviations 
+
+```{r}
+require(quantreg)
+lm.ell1 <- rq(stack.loss ~ ., data= stackloss)
+summary(lm.ell1)
+```
+
+### (iii) Huber method 
+
+```{r}
+require(MASS)
+lm.mestimator <- rlm(stack.loss ~ . ,data=stackloss)
+summary(lm.mestimator)
+```
+
+```{r, echo=False}
+mest.weights <- lm.mestimator$w
+names(mest.weights) <- row.names(stackloss)
+head(sort(mest.weights),10)
+```
+
+<!--We see that ```21, 4 and 3``` have weights less than 1.  We will investigate these points in our diagnostics later.-->
+
+
+### (iv) Least trimmed squares
+
+```{r}
+least.trimmed.sq.fit <- ltsreg(stack.loss ~ . ,data=stackloss)
+coef(least.trimmed.sq.fit)
+```
+
+### Now use diagnostic methods to detect any outliers or influential points. Remove these points and then use least squares. Compare the results.
+
+#### Check Leverage 
+
+```{r}
+df <-stackloss 
+numPredictors <- ( ncol(df)-1)
+hatv <- hatvalues(lm.fit)
+lev.cut <- (numPredictors+1) *2 * 1/ nrow(df)
+high.leverage <- df[hatv > lev.cut,]
+print(high.leverage, "High Leverage Data Elements")
+```
+
+I've used the rule of thumb that points with a leverage greater than $\frac{2(p+1)}{n}$ should be considered as high leverage points.
+
+#### Check for outliers. 
+
+```{r}
+studentized.residuals <- rstudent(lm.fit)
+max(abs(studentized.residuals))
+p<-numPredictors+1
+n<-nrow(df)
+2*(1-pt(max(abs(studentized.residuals)), df=n-p-1))
+
+#Computing Bonferroni Correction
+0.05/n
+
+# t.val.alpha <- qt(.05/(n),n-p-1)
+# pander(data.frame(t.val.alpha = t.val.alpha), caption = "Bonferroni corrected t-value")
+# 
+# outlier.index <- abs(studentized.residuals) > abs(t.val.alpha)
+# 
+# outliers <- df[outlier.index==TRUE,]
+# 
+# if(nrow(outliers)>=1)
+# {
+#   pander(outliers, caption = "outliers")
+# }
+
+```
+
+Since p-val of the data point with maximum studentized residual is greater than the Bonferroni Corrected significant level, thus, the outlier detection is insignificant and we can assume that there is no outlier.
+
+#### Check for influential points. 
+
+We plot the Cook's distances and the residual-leverage plot with level set contours of the Cook distance.   
+```{r}
+cook<- cooks.distance(lm.fit)
+max(cook)
+halfnorm(cook,nlab=3,ylab="Cook's distance")
+# plot(lm.fit,which =4)
+# plot(lm.fit,which = 5)
+```
+#### Removing the influential point and refitting the Least Squares model.
+
+```{r}
+result.21<-lm(stack.loss ~ . , data=stackloss, subset=(cook<max(cook)))
+summary(result.21)
+```
+After removing the influential point, the p-value of the predictor Water.Temp has increased by a factor of 10, but is still significant, but probably not as significant to the model now while Air.Flow has become more significant.
+
+### (b) Utilize the Box-Cox model to determine if there should be transformation on the stack.loss variable in the stackloss data, for the Least Squared regression.
+
+```{r}
+boxcox(result.21, plotit=T)
+boxcox(result.21, plotit=T, lambda=seq(0,0.5,by=0.01))
+```
+So, here the ${\lambda}$=0.48, So we will take it 1/2 for easier interpretation.
+
+```{r}
+sqrt.fit<-lm(stack.loss^(0.5) ~ . , data=stackloss, subset=(cook<max(cook)))
+summary(sqrt.fit)
+#Plotting Residual vs Fitted
+plot(fitted(sqrt.fit),residuals(sqrt.fit),xlab="Fitted",ylab="Residuals")
+abline(h=0)
+#Plotting q-q plot
+qqnorm(scale( residuals(sqrt.fit),center = TRUE, scale = TRUE),ylab="Residuals",main="Q-Q Plot of Residuals")
+qqline(scale( residuals(sqrt.fit),center = TRUE, scale = TRUE) )
+```
+The residual vs fitted and the q-q plot look overall normal to our assumptions.
+
+
+## Q.2. 
+
+### (a) Carry out a linear regression of temperature as a function of time. Do the results suggests there is a non-constant linear trend? Also, carry out the simple diagnostic plots of residuals vs fitted and QQ plot on errors, and summarize your findings.
+```{r}
+lmod.fit<-lm(temp~year, data=aatemp)
+#Plotting Temp vs year
+plot(temp~year, data=aatemp, main='Temp vs Year Plot')
+abline(coefficients(lmod.fit))
+
+#Residua Plot
+plot(fitted(lmod.fit),residuals(lmod.fit),xlab="Fitted",ylab="Residuals", main="Residuals vs Fitted Plot")
+abline(h=0)
+
+#Plotting q-q plot
+qqnorm(scale( residuals(lmod.fit),center = TRUE, scale = TRUE),ylab="Residuals",main="Q-Q Plot of Residuals")
+qqline(scale( residuals(lmod.fit),center = TRUE, scale = TRUE) )
+```
+From the Temp vs Year plot and the coefficient line on the same plot, it is evident that the temperature is linearly dependent on the Year.
+The diagnostic tests for residuals and q-q plot look normal.
+
+### (b) Observations in successive years may be correlated. Fit a model that estimates this correlation. Does this change your opinion about the trend?
+
+```{r}
+# Load the necessary library for time series analysis
+library(nlme)
+glmod<-gls(temp~year, correlation=corAR1(form=~year), data=aatemp)
+summary(glmod)
+intervals(glmod)
+```
+Since the confidence intervals do not have 0, there is significant positive correlation between temp and year.
+
+### (c) Start with a polynomial model with degree 10 and use orthogonal polynomials to reduce the degree of the model. Be specific about your final ”polynomial” model, and plot your fitted model on top of the data, and compare with your best linear model. Hint: This problem may require you to rescale the year variable – you will want to explain your final answer carefully.
+```{r}
+
+```
+

@@ -1,0 +1,117 @@
+---
+title: "STATS 500 HW-4 Q-1"
+author: "Rishikesh Ksheersagar"
+date: "2 Oct 2023"
+output: 
+  html_notebook:
+    fig_width : 2
+    fig_height : 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(faraway)
+data("teengamb")
+lmodel <- lm(gamble ~ ., data=teengamb)
+summary(lmodel)
+```
+
+#### Check for Constant Variance
+
+```{r}
+# Constant Variance Check
+plot(fitted(lmodel),rstandard(lmodel),xlab="Fitted",ylab="Residuals")
+abline(h=0)
+```
+
+There appears to be heteroskedasticity in the plot. Below we plot the fitted values against the residuals for a model where the response has been transformed with the square root function. 
+
+```{r}
+lmodel_transform <- lm(sqrt(gamble) ~ sex + status + income + verbal, data=teengamb)
+plot(fitted(lmodel_transform),rstandard(lmodel_transform),xlab="Fitted",ylab="Residuals")
+abline(h=0)
+```
+
+We see less structure and a more evenly distributed variance.
+
+#### Check Normality
+```{r}
+# Check normality assumption
+op <- par(mfrow=c(1, 2))
+qqnorm(scale( residuals(lmodel),center = TRUE, scale = TRUE), ylab = "Residuals", main = "Q-Q Plot of Standardized Residuals", cex.main=0.8)
+qqline(scale( residuals(lmodel),center = TRUE, scale = TRUE) )
+qqnorm(scale( residuals(lmodel_transform),center = TRUE, scale = TRUE), ylab = "Residuals", main = "Q-Q Plot of Standardized Residuals for sqrt(gamble)", cex.main=0.8)
+qqline(scale( residuals(lmodel_transform),center = TRUE, scale = TRUE) )
+par(op)
+```
+
+We see clear evidence of long tails in the distribution of the residuals. But with the transformed values of gamble, the QQ plot depicts more normality.
+
+#### Check Leverage Points
+```{r}
+hat<-hatvalues(lmodel_transform)
+a<-length(coefficients(lmodel_transform))
+b<-length(fitted(lmodel_transform))
+ratio<-a/b
+op <- par(mfrow=c(1, 2))
+plot(hat, main="Index Plot of Hat Values")
+abline(h=c(2,3)*ratio)
+# Check for large Leverage Points using Half Norm
+halfnorm(lm.influence(lmodel_transform)$hat, nlab = 2, ylab="Leverages")
+par(op)
+# For a point to be considered a Leverage Point, its Leverage > 2(p+1)/n
+# 2*(4+1)/47
+teengamb[c(42,35),]
+```
+There are 2 leverage points (42, 35)th indices in the Teengamb data. (Checked on both gamble and transformed gamble values.)
+
+#### Check Outliers
+
+
+```{r}
+ti <- rstudent(lmodel)
+ti_sort = sort(abs(ti), decreasing = TRUE)
+for (i in 1:length(ti_sort)){
+  if (2*(1-pt(ti_sort[i], df=47-4-1)) < 0.05/47){
+    cat('A data is considered to be an outlier if the p-value of its residual is less than alpha/n (0.05/47)\n')
+    cat('Residual value = ', ti_sort[i],'\nalpha/n = ', 0.05/47, '\tp-value = ', 2*(1-pt(ti_sort[i], df=47-4-1)), '\nindex of residual = ', which(ti == ti_sort[i]))
+  }
+}
+```
+
+
+
+
+##### In the model where we fit the model by using gamble as is, we see that the 24th point is an outlier as its p-value < $[\alpha/n]$.
+
+
+Checking the same for the model fit with transformed values of gamble - 
+
+```{r}
+ti <- rstudent(lmodel_transform)
+cat('alpha / n = ',0.05/47, '\nMax studentized residual = ',max(abs(ti)), '\nMax Residual occurs for : ',which(ti == max(abs(ti))), '\np-value = ', 2*(1-pt(max(abs(ti)), df=47-4-1)))
+```
+
+##### Since the p-value{max(residual)} is greater than $[\alpha/n]$, we can say that there are no outliers in the data when we check using the new model.
+
+#### Q(b)
+
+```{r}
+new_data <- data.frame(sex = 0, income = seq(0, 20, 0.01), status = 43, verbal = 7)
+op <- par(mfrow=c(1, 2))
+grid <- seq(0, 20, 0.01)
+conf <- predict(lmodel_transform, new_data, interval="confidence")
+matplot(grid, conf, lty=c(1,2,2), col=1, type="l", xlab="income", ylab="gamble", main='Confidence Band')
+rug(teengamb$income)
+pred <- predict(lmodel_transform, new_data, interval="prediction")
+matplot(grid, pred, lty=c(1,2,2), col=1, type="l", xlab="income", ylab="gamble", main='Prediction Band')
+rug(teengamb$income)
+par(op)
+```
+The problem with using the range of 0 to 20 for Income and using the prediction and confidence bands is that - from the rug we can see that in the data, there are no values of income greater than 15. This makes it infeasible to use our model to get confidence or future predictions on the income range which the model has not seen before. 
+
+
+

@@ -1,0 +1,129 @@
+---
+title: "STATS 500 HW-3 Q-1"
+author: "Rishikesh Ksheersagar"
+date: "26 Sept 2023"
+output: 
+  html_notebook:
+    fig_width : 2
+    fig_height : 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(faraway)
+library(ellipse)
+```
+
+
+
+
+#### Q1. 
+```{r}
+data("cheddar")
+lmodel <- lm(taste ~ Acetic + H2S + Lactic, data=cheddar)
+summary(lmodel)
+sumary(lmodel)
+```
+Only H2S and Lactic are statistically significant at the 5% level as Pr(>|t|) < 0.05 for both the predictors.
+
+#### Q2.
+```{r}
+lmodelexp <- lm(taste ~ exp(Acetic) + exp(H2S) + Lactic, data=cheddar)
+summary(lmodelexp)
+```
+Here, only Lactic is statistically significant at the 5% level.
+
+#### Q3.
+```{r}
+anova(lmodel, lmodelexp)
+```
+There is less residual variance in the log model (lmodel, first model), but we don't have any degrees of freedom left so we can't estimate the F-statistic
+
+#### Q4.
+From lmodel (fit in Q1), we can say that a unit change in H2S the taste would change by 3.9118 . So an increase of 0.01 in H2S would lead to an increase of 0.039118 in taste.
+```{r}
+# Checking our thinking ---
+data.sample<- sample(nrow(cheddar),1)
+data.element <- cheddar[data.sample,]
+data.element$taste <-NULL
+
+data.element <- as.matrix(cbind(intercept=1,data.element))
+beta.hat <- as.matrix(lmodel$coefficients)
+response.orig <- (data.element) %*% beta.hat
+
+#change the of our data element H2S by +0.01  
+data.element[1,3] <- data.element[1,3] + 0.01
+response.mod <- (data.element) %*% beta.hat
+
+print(response.mod - response.orig)
+```
+
+#### Q5.
+An increase of 0.01 on log scale implies a change of exp(0.01) on the natural/original scale.
+So, percent change in natural scale given a change of 0.01 on log scale = [exp(p+0.01) - exp(p)] / exp(p) * 100
+
+= exp(p) [exp(0.01) - 1] / exp(p) * 100
+= [exp(0.01) - 1] * 100
+```{r}
+cat((exp(0.01)-1)*100, '%')
+```
+
+#### Q.6.
+Generating the Confidence Intervals
+```{r}
+# 95% Confidence Intervals for Regression Coefficients based on linear model analysis in Q1:
+confint(lmodel, level=.95)
+
+# 99% Confidence Intervals for Regression Coefficients based on linear model analysis in Q1
+confint(lmodel, level=.99)
+```
+#### Q7.
+To get 95% CIs for any coefficients, we need the 2.5% and 97.5% percentiles of the t -distribution with 26 degrees of freedom.
+```{r}
+q <- qt(0.975, 26)
+
+# 95% Confidence Region for Beta (H2S)
+### Beta(H2S) +- qt * Std. Error (H2S)
+3.9118 + c(-1,1) * q * 1.2484
+
+# 95% Confidence Region for Beta (Lactic)
+### Beta(Lactic) +- qt * Std. Error (Lactic)
+19.6705 + c(-1,1) * q * 8.6291
+```
+
+Plotting the Ellipse - 
+```{r}
+conf<-confint(lmodel, level=.95) 
+plot(ellipse(lmodel,c('H2S','Lactic')),type="l")
+points(lmodel$coef['H2S'], lmodel$coef['Lactic'], pch=18)
+points(0,0,pch=1)
+abline(v=conf['H2S',],lty=2)
+abline(h=conf['Lactic',],lty=2)
+```
+#### Q8.
+Correlation Plot and Coefficient for H2S and Lactic
+```{r}
+plot(cheddar$H2S, cheddar$Lactic, xlab = "H2S", ylab = "Lactic")
+cat("Correlation Coefficient:", cor(cheddar$H2S, cheddar$Lactic), "\n")
+```
+We observe a positive correlation between Lactic and H2S with a correlation coefficient of 0.64 approximately.
+Since the predictors are positively correlated, we expect to see a negative correlation between the estimators and hence a negatively tilted ellipse, which is exactly what is happening in this case.
+This is a case of multicollinearity.
+
+The inverse relationship between correlation among predictors and estimators (Betas) can be thought about with a simple example:
+
+Say we have y = B0 + B1X1 + B2X2 + e
+
+Assume X2 is almost equal to -X1, then
+y = B0 + B1X1 - B2X2 + e
+
+if X2 = -X1 then
+y = B0 + B1(X1-X2) + B2*0 + e
+
+we can clearly see a positive trend between estimators when predictors are negatively correlated.
+
+
+
