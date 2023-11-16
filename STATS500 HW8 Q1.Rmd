@@ -1,0 +1,269 @@
+---
+title: "STATS 500 HW-8"
+author: "Rishikesh Ksheersagar"
+date: "14 Nov 2023"
+output: 
+  html_notebook:
+    fig_width : 2
+    fig_height : 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(faraway)
+library(pls)
+library(MASS)
+library(lars)
+library(palmerpenguins)
+set.seed(500)
+```
+
+
+##### Reading the Gasoline Data and splitting into Training and Testing sets
+```{r}
+data("gasoline")
+
+gasdata = data.frame(cbind(gasoline$octane,gasoline$NIR[,c(1:40)]))
+
+names(gasdata) <- c('octane','NIR1','NIR2','NIR3','NIR4','NIR5','NIR6','NIR7','NIR8','NIR9',
+                    'NIR10','NIR11','NIR12','NIR13','NIR14','NIR15','NIR16','NIR17','NIR18',
+                    'NIR19','NIR20','NIR21','NIR22','NIR23','NIR24','NIR25','NIR26','NIR27',
+                    'NIR28','NIR29','NIR30','NIR31','NIR32','NIR33','NIR34','NIR35','NIR36',
+                    'NIR37','NIR38','NIR39','NIR40')
+
+c = seq(1,56,5)
+gasdata_tr = gasdata[-c,]
+gasdata_te = gasdata[c,]
+```
+
+
+##### Getting the means of all predictors in train data
+```{r}
+predictors <- gasdata_tr[,-1]
+predictors.means <- colMeans(predictors)
+predictors.means <- data.frame(t(as.matrix(predictors.means, ncol = ncol(predictors.means))))
+```
+
+##### Writing a function for RMSE
+```{r}
+rmse = function(x, y){
+  sqrt( mean( (x-y) ^ 2 ) )
+  }
+```
+
+
+### Question 1 (a) 
+#### Linear Regression with all Predictors
+
+```{r}
+lm1 <- lm(octane ~ ., data = gasdata_tr)
+summary(lm1)
+par(mfrow=c(2,2))
+plot(lm1)
+```
+
+##### Checking RMSE on Train and Test Data
+```{r}
+rmse(lm1$fitted.values, gasdata_tr$octane)
+rmse( predict(lm1, newdata = gasdata_te), gasdata_te$octane )
+```
+
+#### RMSE Train = 0.1997947
+#### RMSE Test  = 0.5104182
+
+
+##### Predicting octane for means of all predictors in train data
+```{r}
+prediction.means.predictors_1 <- predict(lm1 , newdata = predictors.means, interval = "prediction")
+prediction.means.predictors_1
+```
+
+#### The summary of model suggests that predictors are collinear as the individual predictor P-values are insignificant but the model is significant.
+#### The Linear Regression with All Predictors model performs pretty well with both a high R-squared and a low RMSE for both the training (0.1997947) and test sets (0.5104182). The p-value is less than 0.05, indicating that the model is statistically significant.
+#### Prediction band for mean values of predictors in the full data in also tight with the fit_value being 87.20729
+
+### Question 1 (b)
+#### Linear Regression with variables selected using AIC
+
+```{r}
+lm2 <- lm(octane ~ ., data = gasdata_tr)
+lm2 <- step(lm2)
+```
+
+##### Checking RMSE for Train and Test Data
+```{r}
+# fitting model with 22 predictors chosen by AIC
+lm2 <- lm(octane ~ NIR2 + NIR4 + NIR10 + NIR12 + NIR14 + NIR15 + NIR17 + 
+    NIR18 + NIR19 + NIR21 + NIR23 + NIR27 + NIR28 + NIR29 + NIR30 + 
+    NIR31 + NIR33 + NIR34 + NIR36 + NIR38 + NIR39 + NIR40, data = gasdata_tr)
+summary(lm2)
+par(mfrow=c(2,2))
+plot(lm2)
+
+rmse(lm2$fitted.values, gasdata_tr$octane)
+rmse( predict(lm2, newdata = gasdata_te), gasdata_te$octane )
+```
+#### RMSE Train = 0.2190239
+#### RMSE Test  = 0.6657731
+
+
+##### Prediction on Means of all predictors in train data
+```{r}
+prediction.means.predictors_2 <- predict(lm2 , newdata = predictors.means, interval = "prediction")
+prediction.means.predictors_2
+```
+
+#### The RMSE for Train and Test sets signify that the model fit on predictors chosen by AIC, is comparatively sub-optimal to the vanilla regression model in 1(a).
+#### RMSE Train and Test for AIC are higher than those for our initial model.
+#### Nevertheless, the prediction on means of predictors has the exact same value (87.20729) as the linear regression with all predictors model, but the prediction band is tighter in this case.
+
+
+### Question 1 (c)
+#### Principal Component Regression - using CV to pick order of model
+
+```{r}
+mod3 <- pcr(octane ~ ., data = gasdata_tr, ncomp = 40, validation = 'CV', segments = 10)
+rmsCV = RMSEP(mod3, estimate = 'CV')
+cat("# of PCs = ", which.min(rmsCV$val), '\n')
+#cat("Min RMS = ", min(rmsCV$val))
+plot(rmsCV$val, xlab='PC Number', ylab='CV RMS')
+```
+##### RMSE for Train and Test Data
+```{r}
+# fitting model for 3 components as best model has 4 components of which 1 is intercept.
+mod3 <- pcr(octane ~ ., data = gasdata_tr, ncomp = 3, validation = 'CV', segments = 10)
+plot(mod3)
+rmse(predict(mod3, newdata=gasdata_tr, ncomp=3), gasdata_tr$octane)
+rmse(predict(mod3, newdata=gasdata_te, ncomp=3), gasdata_te$octane)
+```
+#### RMSE Train = 0.7989635
+#### RMSE Test  = 0.4542424
+
+
+##### Using train data to get prediction on predictor means of train data
+```{r}
+yfit <- predict(mod3, newdata = predictors.means, interval="prediction", ncomp = 3)
+yfit
+```
+#### The Principal Component Regression model has a higher RMSE for the training set (0.7989635) but performs well on the test set (RMSE = 0.4542424), implying a better generalization capability as compared to plain regression models, but, in general, can represent underfitting.
+#### The octane prediction on means of predictors is same (87.20729) as that in case of linear regression models.
+
+
+### Question 1 (d)
+#### Partial least squares - using CV to pick order of model
+
+```{r}
+mod4 <- plsr(octane ~ ., data = gasdata_tr, ncomp = 40, validation = "CV")
+PLSrmsCV <- RMSEP(mod4, estimate = "CV")
+cat("# of PCs = ", which.min(PLSrmsCV$val), '\n')
+#cat("Min RMS = ", min(PLSrmsCV$val))
+plot(PLSrmsCV$val, xlab='PC Number', ylab='CV RMS')
+```
+
+##### Checking RMSE on Train and Test Data
+```{r}
+# fitting model on 2 components as best model has 3 components of which 1 is intercept.
+mod4 <- pcr(octane ~ ., data = gasdata_tr, ncomp = 2, validation = 'CV', segments = 10)
+plot(mod4)
+rmse(predict(mod4, newdata = gasdata_tr, ncomp = 2), gasdata_tr$octane)
+rmse(predict(mod4, newdata = gasdata_te, ncomp = 2), gasdata_te$octane)
+```
+#### RMSE Train = 0.9565125
+#### RMSE Test. = 0.9297927
+
+
+##### Using train data to get prediction on predictor means from train data
+```{r}
+prediction.means.predictors_4 <- predict(mod4 , newdata = predictors.means, interval = "prediction", ncomp = 2)
+prediction.means.predictors_4
+```
+#### The RMSE for PLS higher than linear regression models and PCR model.
+#### The prediction on means of predictors is same as all other models (87.20729).
+
+
+
+### Question 1 (e)
+#### Ridge regression - using GCV to pick regularization parameter λ.
+
+
+```{r}
+mod5 <- lm.ridge(octane ~ ., lambda = seq(0, 0.15, 1e-3), data = gasdata_tr)
+matplot(mod5$lambda, t(mod5$coef), type='l', lty=1, xlab=expression(lambda), ylab=expression(hat(beta)))
+which.min(mod5$GCV)
+abline(v=0.075)
+```
+
+
+##### Getting the RMSE for Train and Test data
+```{r}
+yfit <- mod5$ym + scale(gasdata_tr[,-1], center = mod5$xm, scale = mod5$scales) %*% mod5$coef[,76]
+rmse(yfit, gasdata_tr$octane)
+ypred <- mod5$ym + scale(gasdata_te[,-1], center = mod5$xm, scale = mod5$scales) %*% mod5$coef[,76]
+rmse(ypred, gasdata_te$octane)
+```
+#### RMSE Train = 0.2833711
+#### RMSE Test  = 0.4904373
+
+##### Getting the predictions for predictor means for the train data
+```{r}
+ypred_means <- mod5$ym + scale(predictors.means, center = mod5$xm, scale = mod5$scales) %*% mod5$coef[,1]
+ypred_means
+```
+
+#### The RMSE for Train in Ridge is 0.2833711 which is more than that of linear regression with all predictors but is less than all other models. But the RMSE Test for Ridge is the least in comparison to all other models. This shows that Ridge with a penalty of lambda = 0.075 is the best fit among all other models.
+#### The prediction of mean value of predictors is same as other models (87.20729).
+
+### Question 1 (f)
+#### Lasso regression - using CV to pick regularization parameter t
+
+```{r}
+set.seed(123)
+par(mfrow=c(1,2))
+trainy = gasdata_tr$octane
+trainx = as.matrix(gasdata_tr[,-1])
+cvout <- cv.lars(trainx, trainy)
+cvout$index[which.min(cvout$cv)]
+mod6 <- lars(trainx, trainy)
+plot(mod6)
+```
+##### Getting the RMSE for Train and Test Data with t (s in code) = 0.05050505
+```{r}
+fitlars <- predict(mod6, trainx, s=0.05050505, mode= "fraction")
+rmse(fitlars$fit, gasdata_tr$octane)
+testx = as.matrix(gasdata_te[,-1])
+predlars <- predict(mod6, testx, s=0.05050505, mode= "fraction")
+rmse(predlars$fit, gasdata_te$octane)
+```
+#### RMSE Train = 0.8260733
+#### RMSE Test  = 0.6465394
+
+##### Getting prediction for predictor means of train data
+```{r}
+predlars.means <- predict(mod6, as.matrix(predictors.means), s=0.05050505, mode= "fraction", interval = 'prediction')
+predlars.means
+```
+#### The RMSE for Train and Test data in case of LASSO is more as compared to all models except PLS model. 
+#### The prediction on mean value of predictors is same as other models (87.20729).
+
+
+
+### Overall Summary
+
+```{r}
+data <- matrix(c("Model and Params", "RMSE Train", "RMSE Test", "Mean Value Prediction for predictors in Train data",
+                 "Linear Regression (All Predictors)", 0.1997947, 0.5104182, 87.20729,
+                 "Linear Regression (AIC : 22 Predictors)", 0.2190239, 0.6657731, 87.20729,
+                 "PCR (CV : 3 PCs)", 0.7989635, 0.4542424, 87.20729,
+                 "PLS (CV : 2 PCs)", 0.9565125, 0.9297927, 87.20729,
+                 "Ridge (GCV : lambda = 0.075)", 0.2833711, 0.4904373, 87.20729,
+                 "LASSO (CV : t = 0.05050505)", 0.8260733, 0.6465394, 87.20729), 
+               nrow = 7, ncol = 4, byrow = TRUE)
+data
+```
+#### Ridge looks like the best choice model with minimum Train RMSE and very low Test RMSE.
+#### The octane prediction for mean values of all predictors in train data is same for all models
